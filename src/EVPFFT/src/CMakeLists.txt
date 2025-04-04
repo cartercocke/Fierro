@@ -110,6 +110,40 @@ set( Sources
      XdmfUniformGridWriter.cpp
      Profiler.cpp)
 
+set( CarterSources
+     run_evpfft.cpp
+     command_line_args.cpp
+     evpfft.cpp
+     allocate_memory.cpp
+     utilities.cpp
+     math_functions.cpp
+     chg_basis.cpp
+     voigt.cpp
+     euler.cpp
+     vpsc_input.cpp
+     data_crystal.cpp
+     data_crystal_elast.cpp
+     data_grain.cpp
+     step.cpp
+     vm.cpp
+     update_orient.cpp
+     orient.cpp
+     update_schmid.cpp
+     forward_backward_fft.cpp
+     inverse_the_greens.cpp
+     initialize_disgrad.cpp
+     evpal.cpp
+     get_smacro.cpp
+     kinhard_param.cpp
+     harden.cpp
+     output_file_manager.cpp
+     write_macro_state.cpp
+     write_micro_state.cpp
+     write_texture.cpp
+     hdf5_io_functions.cpp
+     XdmfUniformGridWriter.cpp
+     Profiler.cpp)
+
 if (BUILD_EVPFFT_FIERRO)
   list(APPEND Sources
        Fierro-EVPFFT-Link/FierroEVPFFTLink.cpp)
@@ -122,8 +156,11 @@ else ()
   find_package(Matar REQUIRED)
   add_executable(${This} ${Sources})
   target_link_libraries(${This} PRIVATE matar Kokkos::kokkos)
+  add_executable(evpfft_carter ${CarterSources})
+  target_link_libraries(evpfft_carter PRIVATE matar Kokkos::kokkos)
 endif ()
 target_link_libraries(${This} PRIVATE Heffte::Heffte MPI::MPI_CXX ${HDF5_LIBRARIES})
+target_link_libraries(evpfft_carter PRIVATE Heffte::Heffte MPI::MPI_CXX ${HDF5_LIBRARIES})
 
 install(
   TARGETS ${This}

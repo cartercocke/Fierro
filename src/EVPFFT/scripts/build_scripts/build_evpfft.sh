@@ -172,7 +172,7 @@ elif [ "$heffte_build_type" = "rocfft" ]; then
 fi
 
 # Configure EVPFFT
-cmake "${cmake_options[@]}" -B "$EVPFFT_BUILD_DIR" -S "$EVPFFT_SOURCE_DIR"
+cmake -DABSOLUTE_NO_OUTPUT=1 "${cmake_options[@]}" -B "$EVPFFT_BUILD_DIR" -S "$EVPFFT_SOURCE_DIR"
 
 # Build kokkos
 echo "Building EVPFFT..."
