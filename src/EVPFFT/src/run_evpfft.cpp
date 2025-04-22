@@ -1,4 +1,5 @@
 #include <cstdlib>
+#include <filesystem>
 #include <iostream>
 #include <limits>
 #include <mpi.h>
@@ -19,34 +20,41 @@
 //   return result;
 // }
 
-std::vector<double> generate_velgrad_trajectory(const size_t num_points,
-                                                const double mean = 0,
-                                                const double std = 1e-5,
-                                                const size_t window = 100) {
-  std::vector<double> velgrad_trajectory(num_points, 0.0);
-
-  std::vector<double> random_values(num_points, 0.0);
-  std::random_device rd;
-  std::mt19937 gen(rd());
-  std::normal_distribution<double> dist{mean, std};
-  for (size_t idx = 0; idx < num_points; idx++) {
-    random_values[idx] = dist(gen);
+std::array<std::vector<double>, 6>
+read_trajectory_file(std::filesystem::path filename) {
+  std::ifstream file(filename);
+  if (!file.is_open()) {
+    std::cerr << "Error opening file: " << filename << std::endl;
+    return {};
   }
-
-  for (size_t idx = 1; idx < num_points; idx++) {
-    for (int p_idx = std::max(0, (int)idx - (int)window); p_idx < (int)idx + 1;
-         p_idx++) {
-      velgrad_trajectory[idx] += random_values[(size_t)p_idx];
+  std::string line;
+  std::array<std::vector<double>, 6> trajectory;
+  std::getline(file, line); // Skip the first line
+  while (std::getline(file, line)) {
+    std::stringstream ss(line);
+    double val;
+    std::vector<double> values;
+    while (ss >> val) {
+      values.push_back(val);
+      if (ss.peek() == ',')
+        ss.ignore();
+    }
+    if (values.size() == 6) {
+      for (size_t i = 0; i < 6; ++i) {
+        trajectory[i].push_back(values[i]);
+      }
+    } else {
+      std::cerr << "Error: Expected 6 values in line: " << line << std::endl;
     }
   }
-  return velgrad_trajectory;
+  file.close();
+  return trajectory;
 }
 
 int main(int argc, char *argv[]) {
   MPI_Init(NULL, NULL);
-  Kokkos::initialize(Kokkos::InitializationSettings()
-                         .set_disable_warnings(true)
-                         .set_num_threads(1));
+  Kokkos::initialize(
+      Kokkos::InitializationSettings().set_disable_warnings(true));
 
   MPI_Comm evpfft_mpi_comm = MPI_COMM_NULL;
   if (evpfft_mpi_comm == MPI_COMM_NULL) {
@@ -59,29 +67,27 @@ int main(int argc, char *argv[]) {
   MPI_Comm_size(evpfft_mpi_comm, &num_ranks);
 
   // Ensure we have the correct number of arguments
-  if (argc != 6) {
+  if (argc != 4) {
     std::cout << "Length of argc is " << argc << std::endl;
-    std::cerr << "Usage: run_evpfft num_points time_step mean std window"
-              << std::endl;
+    std::cerr
+        << "Usage: run_evpfft input_file_name trajectory_file_name time_step"
+        << std::endl;
     return 1;
   }
-  const size_t num_points = std::stoi(argv[1]);
-  const double time_step = std::stod(argv[2]);
-  const double mean = std::stod(argv[3]);
-  const double std = std::stod(argv[4]);
-  const size_t window = std::stoi(argv[5]);
+  const std::string filename = argv[1];
+  const std::string trajectory_file = argv[2];
+  const double time_step = std::stod(argv[3]);
 
-  std::array<std::vector<double>, 6> strain_trajectory, stress_trajectory,
-      velgrad_trajectory;
+  std::array<std::vector<double>, 6> velgrad_trajectory =
+      read_trajectory_file(trajectory_file);
+  const size_t num_points = velgrad_trajectory[0].size();
+
+  std::array<std::vector<double>, 6> strain_trajectory, stress_trajectory;
   for (int i = 0; i < 6; ++i) {
     strain_trajectory[i].resize(num_points + 1, 0.0);
     stress_trajectory[i].resize(num_points + 1, 0.0);
-    velgrad_trajectory[i] =
-        generate_velgrad_trajectory(num_points, mean, std, window);
   }
 
-  std::string filename = "/resnick/groups/bhatta/ccocke/CarterFierro/Fierro/"
-                         "src/EVPFFT/example_input_files/tantalum_input.txt";
   CommandLineArgs cmd;
   cmd.input_filename = filename; //"evpfft.in";
   cmd.micro_filetype = 0;
