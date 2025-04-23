@@ -31,8 +31,8 @@
 -1              ictrl (1-6: strain comp, 0: VM eq, -1: tdot)              
 *INFORMATION ABOUT RUN CONDITIONS                                         
 2              nsteps                                                     
-0.000001         err                                                        
-50              itmax                                                      
+0.0000001         err                                                        
+100              itmax                                                      
 0               IRECOVER read grain states from STRESS.IN  (1) or not (0)?      
 0               ISAVE write grain states in STRESS.OUT (1) or not (0)?                    
 1               IUPDATE update tex & RVE dim (1) or not (0)?

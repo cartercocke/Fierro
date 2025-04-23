@@ -95,6 +95,8 @@ int main(int argc, char *argv[]) {
 
   auto evpfft = new EVPFFT(evpfft_mpi_comm, cmd);
 
+  std::vector<std::tuple<int, double, double>> iter_data;
+
   for (size_t cycle = 0; cycle < num_points; cycle++) {
     // Note EVPFFT uses F-layout while Fierro uses C-layout
     FArray<double> Fvel_grad(3, 3);
@@ -145,6 +147,9 @@ int main(int argc, char *argv[]) {
     strain_trajectory[3][cycle + 1] = Fstrain(0, 1);
     strain_trajectory[4][cycle + 1] = Fstrain(0, 2);
     strain_trajectory[5][cycle + 1] = Fstrain(1, 2);
+
+    iter_data.push_back(
+        std::make_tuple(evpfft->iter, evpfft->errs, evpfft->erre));
   }
 
   for (size_t i = 0; i < velgrad_trajectory.size(); i++) {
@@ -169,6 +174,21 @@ int main(int argc, char *argv[]) {
       std::cout << stress_trajectory[i][j] << ",";
     }
     std::cout << std::endl;
+  }
+
+  std::cout << "Iters: ";
+  for (size_t i = 0; i < iter_data.size(); i++) {
+    std::cout << std::get<0>(iter_data[i]) << ",";
+  }
+  std::cout << std::endl;
+  std::cout << "Errs: ";
+  for (size_t i = 0; i < iter_data.size(); i++) {
+    std::cout << std::get<1>(iter_data[i]) << ",";
+  }
+  std::cout << std::endl;
+  std::cout << "Erre: ";
+  for (size_t i = 0; i < iter_data.size(); i++) {
+    std::cout << std::get<2>(iter_data[i]) << ",";
   }
 
   return 0;

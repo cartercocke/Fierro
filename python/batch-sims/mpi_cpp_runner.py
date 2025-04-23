@@ -108,7 +108,32 @@ def get_trajectories_from_code_output(cpp_output):
             stress_trajectories.append(line_to_array(line))
         elif 'Velgrad' in line:
             velgrad_trajectories.append(line_to_array(line))
-    return strain_trajectories, stress_trajectories, velgrad_trajectories
+        elif 'Iters' in line:
+            iters = line_to_array(line)
+        elif 'Errs' in line:
+            errs = line_to_array(line)
+        elif 'Erre' in line:
+            erre = line_to_array(line)
+    return strain_trajectories, stress_trajectories, velgrad_trajectories, iters, errs, erre
+
+
+def write_trajectory_file(trajectory_path, strain_trajectories, stress_trajectories, velgrad_trajectories, iters, errs, erre):
+    with open(trajectory_path, 'w') as f:
+        f.write('strain_xx,strain_yy,strain_zz,strain_xy,strain_xz,strain_yz,strain_xx,stress_yy,stress_zz,stress_xy,stress_xz,stress_yz,iters,errs,erre\n')
+        for i in range(len(strain_trajectories[0])):
+            if i == 0:
+                iteration = 0
+                erre_val = 0
+                errs_val = 0
+            else:
+                iteration = iters[i-1]
+                erre_val = erre[i-1]
+                errs_val = errs[i-1]
+            f.write(f"{strain_trajectories[0][i]},{strain_trajectories[1][i]},{strain_trajectories[2][i]},"
+                    f"{strain_trajectories[3][i]},{strain_trajectories[4][i]},{strain_trajectories[5][i]},"
+                    f"{stress_trajectories[0][i]},{stress_trajectories[1][i]},{stress_trajectories[2][i]},"
+                    f"{stress_trajectories[3][i]},{stress_trajectories[4][i]},{stress_trajectories[5][i]},"
+                    f"{iteration},{errs_val},{erre_val}\n")
 
 
 def run_cpp_code(trajectory_path, time_step, res=16):
@@ -138,13 +163,13 @@ def run_cpp_code(trajectory_path, time_step, res=16):
 def main():
     # anvil is 175 m/s
     n_points = 100
-    n_iterations = 40
+    n_iterations = 100
     time_step = 1e-6
-    reses = [16, 32, 64, 128]
+    reses = [8, 16, 32, 64, 128]
     runtimes = []
     trajectory_list = []
 
-    trajectory_path = '/resnick/groups/bhatta/ccocke/CarterFierro/Fierro/src/EVPFFT/example_input_files/trajectories.txt'
+    trajectory_path = 'velgrad_trajectories.txt'
     trajectory_generator = TrajectoryGenerator(trajectory_path, time_step, n_points,
                                                num_split_points=10, stddev_init=1e2, stddev_final=1e3,
                                                hydro_fraction=0.01, polynomial_order=2)
@@ -154,7 +179,8 @@ def main():
         print(f"Running resolution {res}")
         cpp_output, runtime = run_cpp_code(trajectory_path, time_step, res=res)
         runtimes.append(runtime)
-        strain_trajectories, stress_trajectories, velgrad_trajectories = get_trajectories_from_code_output(cpp_output)
+        strain_trajectories, stress_trajectories, velgrad_trajectories, iters, errs, erre = get_trajectories_from_code_output(cpp_output)
+        write_trajectory_file(f"trajectories_{res}.txt", strain_trajectories, stress_trajectories, velgrad_trajectories, iters, errs, erre)
         for ref, curr in zip(velgrad_trajectories_ref, velgrad_trajectories):
             assert np.allclose(ref, curr), f"Velgrad trajectories do not match for resolution {res}"
         trajectory_list.append([strain_trajectories, stress_trajectories, velgrad_trajectories])
@@ -185,6 +211,13 @@ def main():
         plt.ylabel('Stress')
 
         plt.savefig(f'output_{res}.png', bbox_inches='tight')
+        plt.close(fig)
+
+        fig = plt.figure(figsize=(6, 4))
+        plt.plot(iters, label='Iterations')
+        plt.xlabel('Time step')
+        plt.ylabel('Iterations')
+        plt.savefig(f'iters_{res}.png', bbox_inches='tight')
         plt.close(fig)
 
     for idx in range(len(reses) - 1):
